@@ -69,11 +69,9 @@ jobs:
             ServerAliveInterval 60
             IPQoS throughput
             IdentityFile /root/.ssh/nixbuild
-            SetEnv NIXBUILDNET_SUBSTITUTERS=https://cache.nixos.org,https://drakon64-nixos-cachyos-kernel.cachix.org NIXBUILDNET_TRUSTED_PUBLIC_KEYS=cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=,drakon64-nixos-cachyos-kernel.cachix.org-1:J3gjZ9N6S05pyLA/P0M5y7jXpSxO/i0rshrieQJi5D0=" | sudo tee -a /root/.ssh/config
-#        env:
-#          CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
-
-#            SetEnv NIXBUILDNET_SUBSTITUTERS=https://cache.nixos.org,https://drakon64-nixos-cachyos-kernel.cachix.org NIXBUILDNET_TRUSTED_PUBLIC_KEYS=cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=,drakon64-nixos-cachyos-kernel.cachix.org-1:J3gjZ9N6S05pyLA/P0M5y7jXpSxO/i0rshrieQJi5D0= NIXBUILDNET_CACHES=cachix://drakon64-nixos-cachyos-kernel NIXBUILDNET_ACCESS_TOKENS=cachix://drakon64-nixos-cachyos-kernel=WRITE:$CACHIX_AUTH_TOKEN" | sudo tee -a /root/.ssh/config > /dev/null
+            SetEnv NIXBUILDNET_SUBSTITUTERS=https://cache.nixos.org,https://drakon64-nixos-cachyos-kernel.cachix.org NIXBUILDNET_TRUSTED_PUBLIC_KEYS=cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=,drakon64-nixos-cachyos-kernel.cachix.org-1:J3gjZ9N6S05pyLA/P0M5y7jXpSxO/i0rshrieQJi5D0= NIXBUILDNET_CACHES=cachix://drakon64-nixos-cachyos-kernel NIXBUILDNET_ACCESS_TOKENS=cachix://drakon64-nixos-cachyos-kernel=WRITE:$CACHIX_AUTH_TOKEN" | sudo tee -a /root/.ssh/config > /dev/null
+        env:
+          CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
       # Required for `nix-build --store`
       - name: Configure OpenSSH for nixbuild.net for runner
@@ -83,7 +81,7 @@ jobs:
             ServerAliveInterval 60
             IPQoS throughput
             IdentityFile /home/runner/.ssh/nixbuild
-            SetEnv NIXBUILDNET_SUBSTITUTERS=https://cache.nixos.org,https://drakon64-nixos-cachyos-kernel.cachix.org NIXBUILDNET_TRUSTED_PUBLIC_KEYS=cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=,drakon64-nixos-cachyos-kernel.cachix.org-1:J3gjZ9N6S05pyLA/P0M5y7jXpSxO/i0rshrieQJi5D0=" >> /home/runner/.ssh/config
+            SetEnv NIXBUILDNET_SUBSTITUTERS=https://cache.nixos.org,https://drakon64-nixos-cachyos-kernel.cachix.org NIXBUILDNET_TRUSTED_PUBLIC_KEYS=cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=,drakon64-nixos-cachyos-kernel.cachix.org-1:J3gjZ9N6S05pyLA/P0M5y7jXpSxO/i0rshrieQJi5D0= NIXBUILDNET_CACHES=cachix://drakon64-nixos-cachyos-kernel NIXBUILDNET_ACCESS_TOKENS=cachix://drakon64-nixos-cachyos-kernel=WRITE:$CACHIX_AUTH_TOKEN" >> /home/runner/.ssh/config
 
       - name: Configure OpenSSH known hosts
         run: echo "eu.nixbuild.net ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPIQCZc54poJ8vqawd8TraNryQeJnvH1eLpIDgbiqymM" | sudo tee -a /etc/ssh/ssh_known_hosts
