@@ -32,7 +32,8 @@ jobs:
           source-url: https://install.lix.systems/lix/lix-installer-x86_64-linux
           diagnostic-endpoint: ""
 
-      - run: |
+      - name: Add Nix channel
+        run: |
           nix-channel --add https://nixos.org/channels/${{ matrix.channel }} nixpkgs
           nix-channel --update
 
@@ -41,18 +42,7 @@ jobs:
           name: drakon64-nixos-cachyos-kernel
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
-      # Required for `nix-build --builder`
-      - name: Configure nixbuild.net SSH private key for root
-        run: |
-          sudo mkdir -p /root/.ssh
-          sudo touch /root/.ssh/nixbuild
-          sudo chmod 0600 /root/.ssh/nixbuild
-          echo "$NIXBUILD_SSH_KEY" | sudo tee /root/.ssh/nixbuild > /dev/null
-        env:
-          NIXBUILD_SSH_KEY: ${{ secrets.NIXBUILD_SSH_KEY }}
-
-      # Required for `nix-build --store`
-      - name: Configure nixbuild.net SSH private key for runner
+      - name: Configure nixbuild.net SSH private key
         run: |
           mkdir -p /home/runner/.ssh
           touch /home/runner/.ssh/nixbuild
@@ -61,20 +51,7 @@ jobs:
         env:
           NIXBUILD_SSH_KEY: ${{ secrets.NIXBUILD_SSH_KEY }}
 
-      # Required for `nix-build --builder`
-      - name: Configure OpenSSH for nixbuild.net for root
-        run: |
-          echo "Host eu.nixbuild.net
-            PubkeyAcceptedKeyTypes ssh-ed25519
-            ServerAliveInterval 60
-            IPQoS throughput
-            IdentityFile /root/.ssh/nixbuild
-            SetEnv NIXBUILDNET_SUBSTITUTERS=https://cache.nixos.org,https://drakon64-nixos-cachyos-kernel.cachix.org NIXBUILDNET_TRUSTED_PUBLIC_KEYS=cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=,drakon64-nixos-cachyos-kernel.cachix.org-1:J3gjZ9N6S05pyLA/P0M5y7jXpSxO/i0rshrieQJi5D0= NIXBUILDNET_CACHES=cachix://drakon64-nixos-cachyos-kernel NIXBUILDNET_ACCESS_TOKENS=cachix://drakon64-nixos-cachyos-kernel=WRITE:$CACHIX_AUTH_TOKEN" | sudo tee -a /root/.ssh/config > /dev/null
-        env:
-          CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
-
-      # Required for `nix-build --store`
-      - name: Configure OpenSSH for nixbuild.net for runner
+      - name: Configure OpenSSH for nixbuild.net
         run: |
           echo "Host eu.nixbuild.net
             PubkeyAcceptedKeyTypes ssh-ed25519
@@ -82,11 +59,21 @@ jobs:
             IPQoS throughput
             IdentityFile /home/runner/.ssh/nixbuild
             SetEnv NIXBUILDNET_SUBSTITUTERS=https://cache.nixos.org,https://drakon64-nixos-cachyos-kernel.cachix.org NIXBUILDNET_TRUSTED_PUBLIC_KEYS=cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=,drakon64-nixos-cachyos-kernel.cachix.org-1:J3gjZ9N6S05pyLA/P0M5y7jXpSxO/i0rshrieQJi5D0= NIXBUILDNET_CACHES=cachix://drakon64-nixos-cachyos-kernel NIXBUILDNET_ACCESS_TOKENS=cachix://drakon64-nixos-cachyos-kernel=WRITE:$CACHIX_AUTH_TOKEN" >> /home/runner/.ssh/config
+        env:
+          CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
-      - name: Configure OpenSSH known hosts
-        run: echo "eu.nixbuild.net ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPIQCZc54poJ8vqawd8TraNryQeJnvH1eLpIDgbiqymM" | sudo tee -a /etc/ssh/ssh_known_hosts
+      - name: Configure OpenSSH known hosts for nixbuild.net
+        run: echo "eu.nixbuild.net ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPIQCZc54poJ8vqawd8TraNryQeJnvH1eLpIDgbiqymM" >> /home/runner/.ssh/known_hosts
 
       - name: Configure Nix for nixbuild.net
-        run: echo "builders-use-substitutes = true" | sudo tee -a /etc/nix/nix.conf
+        run: |
+          echo "eu.nixbuild.net x86_64-linux - 100 1 big-parallel,benchmark" | sudo tee /etc/nix/machines
+          echo "builders-use-substitutes = true" | sudo tee -a /etc/nix/nix.conf
 
-      - run: nix-build -A linuxPackages_cachyos --builders "ssh://eu.nixbuild.net x86_64-linux - 100 1 big-parallel,benchmark" --eval-store auto --store ssh-ng://eu.nixbuild.net
+      - name: Build
+        run: nix-build -A linuxPackages_cachyos --max-jobs 0 --eval-store auto --store ssh-ng://eu.nixbuild.net
+
+      - name: Cachix pin
+        run: |
+          cachix pin drakon64-nixos-cachyos-kernel ${{ matrix.channel }}.out $(nix eval --file default.nix --raw linuxPackages_cachyos.out) --keep-revisions 1
+          cachix pin drakon64-nixos-cachyos-kernel ${{ matrix.channel }}.dev $(nix eval --file default.nix --raw linuxPackages_cachyos.dev) --keep-revisions 1
