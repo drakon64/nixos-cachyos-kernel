@@ -75,5 +75,5 @@ jobs:
 
       - name: Cachix pin
         run: |
-          cachix pin drakon64-nixos-cachyos-kernel ${{ matrix.channel }}.out $(nix eval --file default.nix --raw linuxPackages_cachyos.out) --keep-revisions 1
-          cachix pin drakon64-nixos-cachyos-kernel ${{ matrix.channel }}.dev $(nix eval --file default.nix --raw linuxPackages_cachyos.dev) --keep-revisions 1
+          cachix pin drakon64-nixos-cachyos-kernel ${{ matrix.channel }}.out $(nix eval --file default.nix --raw --eval-store auto --store ssh-ng://eu.nixbuild.net linuxPackages_cachyos.out) --keep-revisions 1
+          cachix pin drakon64-nixos-cachyos-kernel ${{ matrix.channel }}.dev $(nix eval --file default.nix --raw --eval-store auto --store ssh-ng://eu.nixbuild.net linuxPackages_cachyos.dev) --keep-revisions 1
