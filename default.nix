@@ -1,7 +1,10 @@
 {
   pkgs ? import <nixpkgs> { },
 }:
-let
+rec {
+  linuxPackages_cachyos = pkgs.callPackage cachyos/package.nix { };
+  linuxPackages_cachyos_lto = linuxPackages_cachyos.override { clang = true; };
+
   kernelConfig =
     let
       sources = pkgs.callPackage cachyos/sources.nix { };
@@ -9,10 +12,6 @@ let
     pkgs."linuxPackages_${
       builtins.replaceStrings [ "." ] [ "_" ] sources.linuxMinorVersion
     }".kernel.configfile;
-in
-{
-  inherit kernelConfig;
 
-  linuxPackages_cachyos = pkgs.callPackage cachyos/package.nix { };
   generateConfig = pkgs.callPackage cachyos/generate-config.nix { inherit kernelConfig; };
 }

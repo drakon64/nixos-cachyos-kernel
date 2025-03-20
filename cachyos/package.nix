@@ -1,15 +1,19 @@
 {
   callPackage,
+  lto ? false,
+  clangStdenv,
+  stdenv,
   lib,
-  stdenvNoCC,
   buildLinux,
   ...
 }:
 let
   sources = callPackage ./sources.nix { };
+
+  buildStdenv = if lto == true then clangStdenv else stdenv;
 in
 buildLinux {
-  pname = "linux-cachyos-lts";
+  pname = "linux-cachyos-lts" + lib.strings.optionalString lto "-lto";
   src = sources.linux;
   version = sources.linuxVersion;
 
@@ -34,6 +38,17 @@ buildLinux {
     PREEMPT_LAZY = unset;
     CC_OPTIMIZE_FOR_PERFORMANCE_O3 = yes;
   };
+  #// lib.optionalAttrs lto {
+  #  LTO = yes;
+  #  LTO_CLANG = yes;
+  #  ARCH_SUPPORTS_LTO_CLANG = yes;
+  #  ARCH_SUPPORTS_LTO_CLANG_THIN = yes;
+  #  LTO_NONE = unset;
+  #  HAS_LTO_CLANG = yes;
+  #  LTO_CLANG_FULL = yes;
+  #  LTO_CLANG_THIN = unset;
+  #  HAVE_GCC_PLUGINS = yes;
+  #};
 
   kernelPatches = [
     {
@@ -47,5 +62,7 @@ buildLinux {
     }
   ];
 
-  meta.broken = ! stdenvNoCC.hostPlatform.isx86_64;
+  meta.broken = !buildStdenv.hostPlatform.isx86_64;
+
+  stdenv = buildStdenv;
 }
