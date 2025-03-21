@@ -70,6 +70,14 @@ Following this, you can then add the kernel to your NixOS config like so:
 boot.kernelPackages = with pkgs; linuxPackagesFor linuxPackages_cachyos;
 ```
 
+Alternatively you can use a Clang-built kernel with:
+
+```nix
+boot.kernelPackages = with pkgs; linuxPackagesFor linuxPackages_cachyos_lto;
+```
+
+At present the Clang-built kernel does not have LTO enabled.
+
 Finally, run `sudo nixos-rebuild boot` and reboot into the new kernel.
 
 ## Credits
