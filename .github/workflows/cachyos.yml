@@ -15,14 +15,14 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  gcc:
     strategy:
       matrix:
         channel:
           - nixos-24.11
           - nixos-unstable
 
-    name: Build - ${{ matrix.channel }}
+    name: Build - ${{ matrix.channel }} - GCC
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -85,3 +85,74 @@ jobs:
       - run: |
           cachix pin drakon64-nixos-cachyos-kernel ${{ matrix.channel }}.out "$OUT_STORE_PATH" --keep-revisions 1
           cachix pin drakon64-nixos-cachyos-kernel ${{ matrix.channel }}.dev "$DEV_STORE_PATH" --keep-revisions 1
+
+  lto:
+    strategy:
+      matrix:
+        channel:
+          - nixos-24.11
+          - nixos-unstable
+
+    name: Build - ${{ matrix.channel }} - LTO
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: DeterminateSystems/nix-installer-action@v16
+        with:
+          source-url: https://install.lix.systems/lix/lix-installer-x86_64-linux
+          diagnostic-endpoint: ""
+
+      - run: |
+          nix-channel --add https://nixos.org/channels/${{ matrix.channel }} nixpkgs
+          nix-channel --update
+
+      - uses: cachix/cachix-action@v15
+        with:
+          name: drakon64-nixos-cachyos-kernel
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+      - name: Configure nixbuild.net SSH private key
+        run: |
+          mkdir /home/runner/.ssh
+          touch /home/runner/.ssh/nixbuild
+          chmod 0600 /home/runner/.ssh/nixbuild
+          echo "$NIXBUILD_SSH_KEY" > /home/runner/.ssh/nixbuild
+        env:
+          NIXBUILD_SSH_KEY: ${{ secrets.NIXBUILD_SSH_KEY }}
+
+      - name: Configure OpenSSH for nixbuild.net
+        run: |
+          touch /home/runner/.ssh/ssh_config
+          chmod 0600 /home/runner/.ssh/ssh_config
+          echo "Host eu.nixbuild.net
+            PubkeyAcceptedKeyTypes ssh-ed25519
+            ServerAliveInterval 60
+            IPQoS throughput
+            IdentityFile /home/runner/.ssh/nixbuild
+            SetEnv NIXBUILDNET_SUBSTITUTERS=https://cache.nixos.org,https://drakon64-nixos-cachyos-kernel.cachix.org NIXBUILDNET_TRUSTED_PUBLIC_KEYS=cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=,drakon64-nixos-cachyos-kernel.cachix.org-1:J3gjZ9N6S05pyLA/P0M5y7jXpSxO/i0rshrieQJi5D0=" > /home/runner/.ssh/config
+          
+          touch /home/runner/.ssh/known_hosts
+          chmod 0600 /home/runner/.ssh/known_hosts
+          echo "eu.nixbuild.net ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPIQCZc54poJ8vqawd8TraNryQeJnvH1eLpIDgbiqymM" > /home/runner/.ssh/known_hosts
+
+      - name: Configure Nix for nixbuild.net
+        run: echo "builders-use-substitutes = true" | sudo tee -a /etc/nix/nix.conf
+
+      - run: nix-build -A linuxPackages_cachyos_lto --builders "ssh://eu.nixbuild.net x86_64-linux - 100 1 big-parallel,benchmark" --eval-store auto --store ssh-ng://eu.nixbuild.net
+
+      - run: |
+          echo "OUT_STORE_PATH=$(nix eval --file default.nix --raw --eval-store auto --store ssh-ng://eu.nixbuild.net linuxPackages_cachyos_lto.out)
+          DEV_STORE_PATH=$(nix eval --file default.nix --raw --eval-store auto --store ssh-ng://eu.nixbuild.net linuxPackages_cachyos_lto.dev)" >> "$GITHUB_ENV"
+
+      - run: |
+          nix-copy-closure --from eu.nixbuild.net --use-substitutes "$OUT_STORE_PATH"
+          nix-copy-closure --from eu.nixbuild.net --use-substitutes "$DEV_STORE_PATH"
+
+      - run: |
+          cachix push drakon64-nixos-cachyos-kernel "$OUT_STORE_PATH"
+          cachix push drakon64-nixos-cachyos-kernel "$DEV_STORE_PATH"
+
+      - run: |
+          cachix pin drakon64-nixos-cachyos-kernel ${{ matrix.channel }}-lto.out "$OUT_STORE_PATH" --keep-revisions 1
+          cachix pin drakon64-nixos-cachyos-kernel ${{ matrix.channel }}-lto.dev "$DEV_STORE_PATH" --keep-revisions 1
